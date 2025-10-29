@@ -1,0 +1,19 @@
+.hover-zoom {
+    width: 100px; 
+    height: 100px;
+    object-fit: cover;
+    border-radius: 5px;
+    transition: transform 0.4s ease-in-out; /* Smooth transition */
+}
+
+.hover-zoom:hover {
+    transform: scale(2); 
+    transform-origin: center; /* Keep the image enlargement centered */
+}
+
+.no-image {
+    width: 100px; 
+    height: 100px;
+    object-fit: cover;
+    border-radius: 5px;
+}

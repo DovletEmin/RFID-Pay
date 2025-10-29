@@ -1,0 +1,333 @@
+<!-- {% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>💳 My Account</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .avatar {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: #007bff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; color: white;
+            transition: all 0.4s ease;
+        }
+        .balance { font-size: 1.5rem; font-weight: bold; color: #28a745; transition: 0.3s; }
+        .fade-in { animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h3 class="mb-4 text-center">💳 My Account</h3>
+
+    <div class="card p-4 mb-4">
+        <div class="d-flex align-items-center">
+            <div class="avatar mr-3" id="avatar">?</div>
+            <div>
+                <h5 class="mb-0" id="clientName">{{ client.first_name }} {{ client.last_name }}</h5>
+                <small class="text-muted" id="uidText">UID: {{ uid }}</small>
+            </div>
+            <div class="ml-auto text-right">
+                <div class="text-muted">Balance</div>
+                <div class="balance" id="balanceValue">{{ client.balance }}</div>
+            </div>
+        </div>
+        <div class="mt-3 text-muted small" id="scannerStatus">Scanner: waiting...</div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="mb-3">Recent Payments</h5>
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Amount</th><th>Date</th></tr>
+            </thead>
+            <tbody id="paymentList">
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.balance }}</td>
+                    <td>{{ payment.created_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted text-center">No payments</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+const API_UID = '/api/uid/';
+const POLL_INTERVAL_MS = 1000;
+let lastUID = null;
+
+async function pollRFID() {
+    try {
+        const resp = await fetch(API_UID);
+        const data = await resp.json();
+        const uid = data.uid ? data.uid.trim().toUpperCase() : null;
+
+        // Если UID не найден или тот же UID, не отправляем повторно
+        if (!uid || uid === lastUID) return;
+
+        // Сохраняем последний UID и показываем информацию о клиенте
+        lastUID = uid;
+
+        console.log('💳 Card detected:', uid);
+        updateClientInfo(uid);
+    } catch (err) {
+        console.error('RFID poll error:', err);
+    }
+}
+
+async function updateClientInfo(uid) {
+    try {
+        const resp = await fetch(`/api/client/?uid=${uid}`);
+        const data = await resp.json();
+
+        if (data.found) {
+            // Обновляем данные клиента на фронтенде
+            document.getElementById('clientName').textContent = `${data.name}`;
+            document.getElementById('balanceValue').textContent = data.balance.toFixed(2);
+            document.getElementById('uidText').textContent = 'UID: ' + data.uid;
+
+            const avatar = document.getElementById('avatar');
+            avatar.textContent = data.name ? data.name.trim()[0] : '?';
+            avatar.classList.add('fade-in');
+            setTimeout(() => avatar.classList.remove('fade-in'), 600);
+
+            // Обновляем историю платежей
+            const tbody = document.getElementById('paymentList');
+            tbody.innerHTML = '';
+            if (data.payments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-muted text-center">No payments</td></tr>';
+            } else {
+                data.payments.forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${p.balance}</td><td>${new Date(p.created_at).toLocaleString()}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching client data:', e);
+    }
+}
+
+// Запуск опроса
+setInterval(pollRFID, POLL_INTERVAL_MS);
+</script>
+
+</body>
+</html> -->
+
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>My Account</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .avatar {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: #007bff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; color: white;
+            transition: all 0.4s ease;
+        }
+        .balance { font-size: 1.5rem; font-weight: bold; color: #28a745; transition: 0.3s; }
+        .fade-in { animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .scanner-status {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        .scanner-status.waiting { color: #6c757d; }
+        .scanner-status.scanning { color: #007bff; }
+        .scanner-status.removed { color: #dc3545; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h3 class="mb-4 text-center">My Account</h3>
+
+    <div class="card p-4 mb-4">
+        <div class="d-flex align-items-center">
+            <div class="avatar mr-3" id="avatar">?</div>
+            <div>
+                <h5 class="mb-0" id="clientName">—</h5>
+                <small class="text-muted" id="uidText">UID: —</small>
+            </div>
+            <div class="ml-auto text-right">
+                <div class="text-muted">Balance</div>
+                <div class="balance" id="balanceValue">0.00</div>
+            </div>
+        </div>
+        <div class="mt-3 scanner-status waiting" id="scannerStatus">
+            Scanner: waiting for card...
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="mb-3">Recent Payments</h5>
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Amount</th><th>Date</th></tr>
+            </thead>
+            <tbody id="paymentList">
+                <tr><td colspan="2" class="text-muted text-center">Waiting for card...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+const API_UID = '/api/uid/';
+const POLL_INTERVAL_MS = 1000;
+let lastUID = null;
+let cardPresent = false;
+let pollTimeout = null;
+
+const statusEl = document.getElementById('scannerStatus');
+const avatarEl = document.getElementById('avatar');
+
+// Обновление статуса сканера
+function setScannerStatus(text, type = 'waiting') {
+    statusEl.textContent = `Scanner: ${text}`;
+    statusEl.className = `scanner-status ${type}`;
+}
+
+// Очистка интерфейса
+function clearClientInfo() {
+    document.getElementById('clientName').textContent = '—';
+    document.getElementById('balanceValue').textContent = '0.00';
+    document.getElementById('uidText').textContent = 'UID: —';
+    avatarEl.textContent = '?';
+    avatarEl.style.background = '#007bff';
+
+    const tbody = document.getElementById('paymentList');
+    tbody.innerHTML = '<tr><td colspan="2" class="text-muted text-center">Waiting for card...</td></tr>';
+
+    setScannerStatus('waiting for card...', 'waiting');
+}
+
+async function pollRFID() {
+    try {
+        const resp = await fetch(API_UID);
+        const data = await resp.json();
+        const uid = data.uid ? data.uid.trim().toUpperCase() : null;
+
+        // Карта убрана
+        if (cardPresent && !uid) {
+            cardPresent = false;
+            lastUID = null;
+            clearClientInfo();
+            setScannerStatus('card removed', 'removed');
+            setTimeout(() => setScannerStatus('waiting for card...', 'waiting'), 1500);
+            return;
+        }
+
+        // Нет карты — ждём
+        if (!uid) {
+            if (cardPresent) {
+                cardPresent = false;
+                lastUID = null;
+                clearClientInfo();
+            }
+            return;
+        }
+
+        // Карта появилась впервые или новая
+        if (!cardPresent || uid !== lastUID) {
+            cardPresent = true;
+            lastUID = uid;
+
+            console.log('New card detected:', uid);
+            setScannerStatus('card detected, loading...', 'scanning');
+            await updateClientInfo(uid);
+        }
+
+    } catch (err) {
+        console.error('RFID poll error:', err);
+        setScannerStatus('error, retrying...', 'removed');
+    }
+}
+
+async function updateClientInfo(uid) {
+    try {
+        const resp = await fetch(`/api/client/?uid=${uid}`);
+        const data = await resp.json();
+
+        if (data.found) {
+            // Полное имя
+            const fullName = `${data.name || 'Unknown'}`.trim();
+            document.getElementById('clientName').textContent = fullName;
+            document.getElementById('balanceValue').textContent = data.balance.toFixed(2);
+            document.getElementById('uidText').textContent = 'UID: ' + data.uid;
+
+            // Аватар
+            const firstLetter = fullName[0]?.toUpperCase() || '?';
+            avatarEl.textContent = firstLetter;
+            avatarEl.style.background = data.balance >= 0 ? '#28a745' : '#dc3545';
+            avatarEl.classList.add('fade-in');
+            setTimeout(() => avatarEl.classList.remove('fade-in'), 600);
+
+            // Платежи
+            const tbody = document.getElementById('paymentList');
+            tbody.innerHTML = '';
+            if (!data.payments || data.payments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-muted text-center">No payments</td></tr>';
+            } else {
+                data.payments.forEach(p => {
+                    const tr = document.createElement('tr');
+                    const date = new Date(p.created_at);
+                    tr.innerHTML = `
+                        <td>${p.balance.toFixed(2)}</td>
+                        <td>${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            setScannerStatus('ready', 'scanning');
+        } else {
+            // Клиент не найден
+            document.getElementById('clientName').textContent = 'Not found';
+            document.getElementById('balanceValue').textContent = '—';
+            document.getElementById('uidText').textContent = 'UID: ' + uid;
+            avatarEl.textContent = '!';
+            avatarEl.style.background = '#dc3545';
+            document.getElementById('paymentList').innerHTML = '<tr><td colspan="2" class="text-muted text-center">Client not registered</td></tr>';
+            setScannerStatus('client not found', 'removed');
+        }
+    } catch (e) {
+        console.error('Error fetching client:', e);
+        setScannerStatus('network error', 'removed');
+    }
+}
+
+// Инициализация
+clearClientInfo();
+setInterval(pollRFID, POLL_INTERVAL_MS);
+</script>
+</body>
+</html>
